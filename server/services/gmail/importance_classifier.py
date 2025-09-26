@@ -81,11 +81,11 @@ async def classify_email_importance(email: ProcessedEmail) -> Optional[str]:
     """Return summary text when email should be surfaced; otherwise None."""
 
     settings = get_settings()
-    api_key = settings.openrouter_api_key
+    api_key = settings.api_key
     model = settings.email_classifier_model
 
     if not api_key:
-        logger.warning("Skipping importance check; OpenRouter API key missing")
+        logger.warning("Skipping importance check; API key missing")
         return None
 
     user_payload = _format_email_payload(email)
