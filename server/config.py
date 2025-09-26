@@ -51,14 +51,15 @@ class Settings(BaseModel):
     server_port: int = Field(default=_env_int("OPENPOKE_PORT", 8001))
 
     # LLM model selection
-    interaction_agent_model: str = Field(default="anthropic/claude-sonnet-4")
-    execution_agent_model: str = Field(default="anthropic/claude-sonnet-4")
-    execution_agent_search_model: str = Field(default="anthropic/claude-sonnet-4")
-    summarizer_model: str = Field(default="anthropic/claude-sonnet-4")
-    email_classifier_model: str = Field(default="anthropic/claude-sonnet-4")
+    interaction_agent_model: str = Field(default=os.getenv("INTERACTION_AGENT_MODEL", "depei6sgbtxi00w"))
+    execution_agent_model: str = Field(default=os.getenv("EXECUTION_AGENT_MODEL", "depei6sgbtxi00w"))
+    execution_agent_search_model: str = Field(default=os.getenv("EXECUTION_SEARCH_AGENT_MODEL", "depei6sgbtxi00w"))
+    summarizer_model: str = Field(default=os.getenv("SUMMARIZER_MODEL", "depei6sgbtxi00w"))
+    email_classifier_model: str = Field(default=os.getenv("EMAIL_CLASSIFIER_MODEL", "depei6sgbtxi00w"))
 
-    # Credentials / integrations
-    openrouter_api_key: Optional[str] = Field(default=os.getenv("OPENROUTER_API_KEY"))
+    # API Configuration
+    api_base_url: str = Field(default=os.getenv("API_BASE_URL", "https://api.friendli.ai/dedicated/v1"))
+    api_key: Optional[str] = Field(default=os.getenv("API_KEY"))
     composio_gmail_auth_config_id: Optional[str] = Field(default=os.getenv("COMPOSIO_GMAIL_AUTH_CONFIG_ID"))
     composio_api_key: Optional[str] = Field(default=os.getenv("COMPOSIO_API_KEY"))
 

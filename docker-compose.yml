@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - API_BASE_URL=https://api.friendli.ai/dedicated/v1
+      - API_KEY=flp_RGQZ0JmoTi16KmgWaBoc9XLiYs7RCVL718Ujm9GOaog3c
+      - COMPOSIO_API_KEY=ak_VxihYg2VIlLjK9ZgVKkn
+      - INTERACTION_AGENT_MODEL=depei6sgbtxi00w
+      - EXECUTION_AGENT_MODEL=depei6sgbtxi00w
+      - EXECUTION_SEARCH_AGENT_MODEL=depei6sgbtxi00w
+      - SUMMARIZER_MODEL=depei6sgbtxi00w
+      - EMAIL_CLASSIFIER_MODEL=depei6sgbtxi00w
+      - OPENPOKE_HOST=0.0.0.0
+      - OPENPOKE_PORT=8001
+      - OPENPOKE_CORS_ALLOW_ORIGINS=*
+      - OPENPOKE_ENABLE_DOCS=1
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  # Optional: Add a reverse proxy (nginx) for production
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf
+  #   depends_on:
+  #     - web
+  #   restart: unless-stopped

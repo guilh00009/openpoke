@@ -31,7 +31,7 @@ from .system_prompt import get_system_prompt
 # Constants
 MAX_LLM_ITERATIONS = 8
 ERROR_GMAIL_NOT_CONNECTED = "Gmail not connected. Please connect Gmail in settings first."
-ERROR_OPENROUTER_NOT_CONFIGURED = "OpenRouter API key not configured. Set OPENROUTER_API_KEY."
+ERROR_OPENROUTER_NOT_CONFIGURED = "API key not configured. Set API_KEY."
 ERROR_EMPTY_QUERY = "search_query must not be empty"
 ERROR_QUERY_REQUIRED = "query parameter is required"
 ERROR_MESSAGE_IDS_REQUIRED = "message_ids parameter is required"
@@ -72,9 +72,9 @@ def _validate_gmail_connection() -> Optional[str]:
 
 
 def _validate_openrouter_config() -> Tuple[Optional[str], Optional[str]]:
-    """Validate OpenRouter configuration and return (api_key, model) or (None, error)."""
+    """Validate API configuration and return (api_key, model) or (None, error)."""
     settings = get_settings()
-    api_key = settings.openrouter_api_key
+    api_key = settings.api_key
     if not api_key:
         return None, ERROR_OPENROUTER_NOT_CONFIGURED
     return api_key, settings.execution_agent_search_model
@@ -107,7 +107,7 @@ async def task_email_search(search_query: str) -> Any:
     
     api_key, model_or_error = _validate_openrouter_config()
     if not api_key:
-        logger.error(f"[EMAIL_SEARCH] OpenRouter not configured: {model_or_error}")
+        logger.error(f"[EMAIL_SEARCH] API not configured: {model_or_error}")
         return {"error": model_or_error}
     
     try:
@@ -379,7 +379,7 @@ def _build_response(
 
 
 def _extract_assistant_message(response: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract assistant message from OpenRouter API response."""
+    """Extract assistant message from API response."""
     return response.get("choices", [{}])[0].get("message", {})
 
 

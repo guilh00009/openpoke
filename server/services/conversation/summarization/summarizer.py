@@ -39,12 +39,12 @@ async def _call_openrouter(prompt: SummaryPrompt, model: str, api_key: Optional[
             )
             choices = response.get("choices") or []
             if not choices:
-                raise OpenRouterError("OpenRouter response missing choices")
+                raise OpenRouterError("API response missing choices")
             message = choices[0].get("message") or {}
             content = (message.get("content") or "").strip()
             if content:
                 return content
-            raise OpenRouterError("OpenRouter response missing content")
+            raise OpenRouterError("API response missing content")
         except OpenRouterError as exc:
             last_error = exc
             if attempt == 0:
@@ -107,7 +107,7 @@ async def summarize_conversation() -> bool:
         },
     )
 
-    summary_text = await _call_openrouter(prompt, settings.summarizer_model, settings.openrouter_api_key)
+    summary_text = await _call_openrouter(prompt, settings.summarizer_model, settings.api_key)
     summary_body = summary_text if summary_text else state.summary_text
 
     refreshed_entries = _collect_entries(conversation_log)

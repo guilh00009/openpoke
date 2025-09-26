@@ -31,13 +31,13 @@ class ExecutionAgentRuntime:
     def __init__(self, agent_name: str):
         settings = get_settings()
         self.agent = ExecutionAgent(agent_name)
-        self.api_key = settings.openrouter_api_key
+        self.api_key = settings.api_key
         self.model = settings.execution_agent_model
         self.tool_registry = get_tool_registry(agent_name=agent_name)
         self.tool_schemas = get_tool_schemas()
 
         if not self.api_key:
-            raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable.")
+            raise ValueError("API key not configured. Set API_KEY environment variable.")
 
     # Main execution loop for running agent with LLM calls and tool execution
     async def execute(self, instructions: str) -> ExecutionResult:
@@ -148,7 +148,7 @@ class ExecutionAgentRuntime:
                 error=error_msg
             )
 
-    # Execute OpenRouter API call with system prompt, messages, and optional tool schemas
+    # Execute API call with system prompt, messages, and optional tool schemas
     async def _make_llm_call(self, system_prompt: str, messages: List[Dict], with_tools: bool) -> Dict:
         """Make an LLM call."""
         tools_to_send = self.tool_schemas if with_tools else None
