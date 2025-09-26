@@ -18,8 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy server code
 COPY server/ ./server/
 
-# Copy .env file
-COPY .env .
 
 # Expose port
 EXPOSE 8001
