@@ -1,14 +1,18 @@
-# Use Node.js 18 LTS
+# Use Node.js 18 LTS Alpine for smaller size
 FROM node:18-alpine
+
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better layer caching
 COPY web/package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (use npm ci for faster, reliable builds)
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy web code
 COPY web/ .
@@ -16,8 +20,19 @@ COPY web/ .
 # Build the application
 RUN npm run build
 
+# Create necessary directories and set permissions
+RUN mkdir -p /app/.next/cache && \
+    chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
 # Expose port
 EXPOSE 3000
 
-# Start the application
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+
+# Start the application with proper configuration
 CMD ["npm", "start"]

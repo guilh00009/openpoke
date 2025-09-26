@@ -42,14 +42,35 @@ OpenPoke is a simplified, open-source take on [Interaction Company’s](https://
 If you have Docker and docker-compose installed, you can get started immediately:
 
 ```bash
-# Deploy with one command
+# Deploy with one command (includes security setup)
 ./deploy.sh
 
-# Or manually
-docker-compose up --build -d
+# Or manually with environment variables
+docker-compose --env-file .env up --build -d
 ```
 
 This will start both the API server (port 8001) and web UI (port 3000).
+
+### Production Deployment
+
+For production deployments:
+
+```bash
+# Use production environment file
+docker-compose --env-file .env.production up --build -d
+
+# Or use specific environment file
+docker-compose --env-file .env.staging up --build -d
+```
+
+### Docker Features
+
+- **Security**: Non-root containers with proper user isolation
+- **Health Checks**: Built-in monitoring for service availability
+- **Resource Limits**: CPU and memory constraints for stable performance
+- **Logging**: Structured JSON logging with rotation
+- **Networks**: Isolated network for service communication
+- **Volumes**: Persistent storage for logs and runtime data
 
 ## 🛠️ Manual Setup (Alternative)
 

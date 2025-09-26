@@ -1,5 +1,15 @@
 version: '3.8'
 
+# Define networks for better service isolation
+networks:
+  app-network:
+    driver: bridge
+
+# Define volumes for persistent data
+volumes:
+  logs:
+    driver: local
+
 services:
   server:
     build:
@@ -8,19 +18,38 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - API_BASE_URL=https://api.friendli.ai/dedicated/v1
-      - API_KEY=flp_RGQZ0JmoTi16KmgWaBoc9XLiYs7RCVL718Ujm9GOaog3c
-      - COMPOSIO_API_KEY=ak_VxihYg2VIlLjK9ZgVKkn
-      - INTERACTION_AGENT_MODEL=depei6sgbtxi00w
-      - EXECUTION_AGENT_MODEL=depei6sgbtxi00w
-      - EXECUTION_SEARCH_AGENT_MODEL=depei6sgbtxi00w
-      - SUMMARIZER_MODEL=depei6sgbtxi00w
-      - EMAIL_CLASSIFIER_MODEL=depei6sgbtxi00w
       - OPENPOKE_HOST=0.0.0.0
       - OPENPOKE_PORT=8001
       - OPENPOKE_CORS_ALLOW_ORIGINS=*
-      - OPENPOKE_ENABLE_DOCS=1
+      - OPENPOKE_ENABLE_DOCS=${OPENPOKE_ENABLE_DOCS:-1}
+      # Sensitive environment variables should be loaded from .env file
+      - API_BASE_URL=${API_BASE_URL}
+      - API_KEY=${API_KEY}
+      - COMPOSIO_API_KEY=${COMPOSIO_API_KEY}
+      - INTERACTION_AGENT_MODEL=${INTERACTION_AGENT_MODEL}
+      - EXECUTION_AGENT_MODEL=${EXECUTION_AGENT_MODEL}
+      - EXECUTION_SEARCH_AGENT_MODEL=${EXECUTION_SEARCH_AGENT_MODEL}
+      - SUMMARIZER_MODEL=${SUMMARIZER_MODEL}
+      - EMAIL_CLASSIFIER_MODEL=${EMAIL_CLASSIFIER_MODEL}
     restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - logs:/app/logs
+      - ./server:/app/server:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web:
     build:
@@ -29,10 +58,27 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8001}
     depends_on:
       - server
     restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - ./web:/app:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
+          memory: 256M
+        reservations:
+          cpus: '0.15'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Optional: Add a reverse proxy (nginx) for production
   # nginx:
