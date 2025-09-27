@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from .processing import ProcessedEmail
 from ...config import get_settings
 from ...logging_config import logger
-from ...openrouter_client import OpenRouterError, request_chat_completion
+from ...openrouter_client import OpenAIError, request_chat_completion
 
 
 _TOOL_NAME = "mark_email_importance"
@@ -92,6 +92,18 @@ async def classify_email_importance(email: ProcessedEmail) -> Optional[str]:
     messages = [{"role": "user", "content": user_payload}]
 
     try:
+        logger.debug(
+            "Starting importance classification",
+            extra={
+                "message_id": email.id,
+                "model": model,
+                "sender": email.sender,
+                "subject": email.subject,
+                "has_attachments": email.has_attachments,
+                "label_count": len(email.label_ids) if email.label_ids else 0,
+            }
+        )
+        
         response = await request_chat_completion(
             model=model,
             messages=messages,
@@ -99,16 +111,45 @@ async def classify_email_importance(email: ProcessedEmail) -> Optional[str]:
             api_key=api_key,
             tools=[_TOOL_SCHEMA],
         )
-    except OpenRouterError as exc:
+        
+        logger.debug(
+            "Importance classification API call completed",
+            extra={
+                "message_id": email.id,
+                "model": model,
+                "response_choices": len(response.get("choices", [])),
+                "usage": response.get("usage", {}),
+            }
+        )
+        
+    except OpenAIError as exc:
         logger.error(
-            "Importance classification failed",
-            extra={"message_id": email.id, "error": str(exc)},
+            "Importance classification API error",
+            extra={
+                "message_id": email.id,
+                "model": model,
+                "sender": email.sender,
+                "subject": email.subject,
+                "error_type": "OpenAIError",
+                "error_message": str(exc),
+                "api_key_present": bool(api_key),
+                "request_payload_size": len(user_payload),
+            },
+            exc_info=True
         )
         return None
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception(
             "Unexpected error during importance classification",
-            extra={"message_id": email.id},
+            extra={
+                "message_id": email.id,
+                "model": model,
+                "sender": email.sender,
+                "subject": email.subject,
+                "error_type": type(exc).__name__,
+                "api_key_present": bool(api_key),
+                "request_payload_size": len(user_payload),
+            }
         )
         return None
 

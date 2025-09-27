@@ -89,7 +89,19 @@ class InteractionAgentRuntime:
             )
 
         except Exception as exc:
-            logger.error("Interaction agent failed", extra={"error": str(exc)})
+            error_type = type(exc).__name__
+            logger.error(
+                "Interaction agent failed",
+                extra={
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "user_message_length": len(user_message),
+                    "model": self.model,
+                    "api_key_present": bool(self.api_key),
+                    "tools_available": len(self.tool_schemas),
+                },
+                exc_info=True
+            )
             return InteractionResult(
                 success=False,
                 response="",
@@ -124,7 +136,19 @@ class InteractionAgentRuntime:
             )
 
         except Exception as exc:
-            logger.error("Interaction agent (agent message) failed", extra={"error": str(exc)})
+            error_type = type(exc).__name__
+            logger.error(
+                "Interaction agent (agent message) failed",
+                extra={
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "agent_message_length": len(agent_message),
+                    "model": self.model,
+                    "api_key_present": bool(self.api_key),
+                    "tools_available": len(self.tool_schemas),
+                },
+                exc_info=True
+            )
             return InteractionResult(
                 success=False,
                 response="",
@@ -208,15 +232,50 @@ class InteractionAgentRuntime:
 
         logger.debug(
             "Interaction agent calling LLM",
-            extra={"model": self.model, "tools": len(self.tool_schemas)},
+            extra={
+                "model": self.model,
+                "tools": len(self.tool_schemas),
+                "messages_count": len(messages),
+                "system_prompt_length": len(system_prompt),
+                "api_key_present": bool(self.api_key),
+            },
         )
-        return await request_chat_completion(
-            model=self.model,
-            messages=messages,
-            system=system_prompt,
-            api_key=self.api_key,
-            tools=self.tool_schemas,
-        )
+        
+        try:
+            response = await request_chat_completion(
+                model=self.model,
+                messages=messages,
+                system=system_prompt,
+                api_key=self.api_key,
+                tools=self.tool_schemas,
+            )
+            
+            logger.debug(
+                "Interaction agent LLM call completed",
+                extra={
+                    "model": self.model,
+                    "response_choices": len(response.get("choices", [])),
+                    "usage": response.get("usage", {}),
+                },
+            )
+            
+            return response
+            
+        except Exception as exc:
+            error_type = type(exc).__name__
+            logger.error(
+                f"Interaction agent LLM call failed: {error_type}",
+                extra={
+                    "model": self.model,
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "tools_count": len(self.tool_schemas),
+                    "messages_count": len(messages),
+                    "api_key_present": bool(self.api_key),
+                },
+                exc_info=True
+            )
+            raise
 
     # Extract the assistant's message from the API response structure
     def _extract_assistant_message(self, response: Dict[str, Any]) -> Dict[str, Any]:
@@ -296,14 +355,21 @@ class InteractionAgentRuntime:
             self._log_tool_invocation(tool_call, stage="start")
             result = handle_tool_call(tool_call.name, tool_call.arguments)
         except Exception as exc:  # pragma: no cover - defensive
+            error_type = type(exc).__name__
             logger.error(
-                "Tool execution crashed",
-                extra={"tool": tool_call.name, "error": str(exc)},
+                f"Tool execution crashed: {error_type}",
+                extra={
+                    "tool": tool_call.name,
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "arguments": tool_call.arguments,
+                },
+                exc_info=True
             )
             self._log_tool_invocation(
                 tool_call,
                 stage="error",
-                detail={"error": str(exc)},
+                detail={"error": str(exc), "error_type": error_type},
             )
             return ToolResult(success=False, payload={"error": str(exc)})
 
