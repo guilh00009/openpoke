@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     return new Response('Missing or invalid timezone', { status: 400 });
   }
 
-  const serverBase = process.env.PY_SERVER_URL || 'http://localhost:8001';
+  const serverBase = process.env.PY_SERVER_URL || 'https://openpoke.onrender.com';
   const url = `${serverBase.replace(/\/$/, '')}/api/v1/meta/timezone`;
 
   try {

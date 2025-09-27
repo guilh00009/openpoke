@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     return new Response('Missing messages', { status: 400 });
   }
 
-  const serverBase = process.env.PY_SERVER_URL || 'http://localhost:8001';
+  const serverBase = process.env.PY_SERVER_URL || 'https://openpoke.onrender.com';
   const serverPath = process.env.PY_CHAT_PATH || '/api/v1/chat/send';
   const url = `${serverBase.replace(/\/$/, '')}${serverPath}`;
 
