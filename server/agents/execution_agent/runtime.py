@@ -104,7 +104,17 @@ class ExecutionAgentRuntime:
                         record_payload = self._safe_json_dump(result)
                     else:
                         error_detail = result.get("error") if isinstance(result, dict) else str(result)
-                        logger.warning(f"[{self.agent.name}] Tool {tool_name} failed: {error_detail}")
+                        logger.warning(
+                            f"[{self.agent.name}] Tool {tool_name} failed",
+                            extra={
+                                "agent_name": self.agent.name,
+                                "tool_name": tool_name,
+                                "tool_arguments": tool_args,
+                                "error_detail": error_detail,
+                                "iteration": iteration + 1,
+                                "max_iterations": self.MAX_TOOL_ITERATIONS,
+                            }
+                        )
                         record_payload = error_detail
 
                     self.agent.record_tool_execution(
@@ -136,8 +146,24 @@ class ExecutionAgentRuntime:
             )
 
         except Exception as e:
-            logger.error(f"[{self.agent.name}] Execution failed: {e}")
+            error_type = type(e).__name__
             error_msg = str(e)
+            
+            logger.error(
+                f"[{self.agent.name}] Execution failed: {error_type}",
+                extra={
+                    "agent_name": self.agent.name,
+                    "error_type": error_type,
+                    "error_message": error_msg,
+                    "instructions_length": len(instructions),
+                    "model": self.model,
+                    "api_key_present": bool(self.api_key),
+                    "tools_available": len(self.tool_registry),
+                    "max_iterations": self.MAX_TOOL_ITERATIONS,
+                },
+                exc_info=True
+            )
+            
             failure_text = f"Failed to complete task: {error_msg}"
             self.agent.record_response(f"Error: {error_msg}")
 
@@ -152,14 +178,56 @@ class ExecutionAgentRuntime:
     async def _make_llm_call(self, system_prompt: str, messages: List[Dict], with_tools: bool) -> Dict:
         """Make an LLM call."""
         tools_to_send = self.tool_schemas if with_tools else None
-        logger.info(f"[{self.agent.name}] Calling LLM with model: {self.model}, tools: {len(tools_to_send) if tools_to_send else 0}")
-        return await request_chat_completion(
-            model=self.model,
-            messages=messages,
-            system=system_prompt,
-            api_key=self.api_key,
-            tools=tools_to_send
+        
+        logger.debug(
+            f"[{self.agent.name}] Calling LLM",
+            extra={
+                "agent_name": self.agent.name,
+                "model": self.model,
+                "tools_count": len(tools_to_send) if tools_to_send else 0,
+                "messages_count": len(messages),
+                "system_prompt_length": len(system_prompt),
+                "api_key_present": bool(self.api_key),
+            }
         )
+        
+        try:
+            response = await request_chat_completion(
+                model=self.model,
+                messages=messages,
+                system=system_prompt,
+                api_key=self.api_key,
+                tools=tools_to_send
+            )
+            
+            logger.debug(
+                f"[{self.agent.name}] LLM call completed",
+                extra={
+                    "agent_name": self.agent.name,
+                    "model": self.model,
+                    "response_choices": len(response.get("choices", [])),
+                    "usage": response.get("usage", {}),
+                }
+            )
+            
+            return response
+            
+        except Exception as exc:
+            error_type = type(exc).__name__
+            logger.error(
+                f"[{self.agent.name}] LLM call failed: {error_type}",
+                extra={
+                    "agent_name": self.agent.name,
+                    "model": self.model,
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "tools_count": len(tools_to_send) if tools_to_send else 0,
+                    "messages_count": len(messages),
+                    "api_key_present": bool(self.api_key),
+                },
+                exc_info=True
+            )
+            raise
 
     # Parse and validate tool calls from LLM response into structured format
     def _extract_tool_calls(self, raw_tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -225,12 +293,52 @@ class ExecutionAgentRuntime:
         """Execute a tool. Returns (success, result)."""
         tool_func = self.tool_registry.get(tool_name)
         if not tool_func:
+            logger.error(
+                f"[{self.agent.name}] Unknown tool requested",
+                extra={
+                    "agent_name": self.agent.name,
+                    "tool_name": tool_name,
+                    "available_tools": list(self.tool_registry.keys()),
+                    "arguments": arguments,
+                }
+            )
             return False, {"error": f"Unknown tool: {tool_name}"}
 
         try:
+            logger.debug(
+                f"[{self.agent.name}] Executing tool: {tool_name}",
+                extra={
+                    "agent_name": self.agent.name,
+                    "tool_name": tool_name,
+                    "arguments": arguments,
+                }
+            )
+            
             result = tool_func(**arguments)
             if inspect.isawaitable(result):
                 result = await result
+                
+            logger.debug(
+                f"[{self.agent.name}] Tool {tool_name} executed successfully",
+                extra={
+                    "agent_name": self.agent.name,
+                    "tool_name": tool_name,
+                    "result_type": type(result).__name__,
+                }
+            )
+            
             return True, result
         except Exception as e:
+            error_type = type(e).__name__
+            logger.error(
+                f"[{self.agent.name}] Tool {tool_name} execution failed: {error_type}",
+                extra={
+                    "agent_name": self.agent.name,
+                    "tool_name": tool_name,
+                    "arguments": arguments,
+                    "error_type": error_type,
+                    "error_message": str(e),
+                },
+                exc_info=True
+            )
             return False, {"error": str(e)}
