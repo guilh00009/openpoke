@@ -5,7 +5,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 from ....config import get_settings
 from ....logging_config import logger
-from ....openrouter_client import OpenRouterError, request_chat_completion
+from ....openrouter_client import OpenAIError, request_chat_completion
 from .prompt_builder import SummaryPrompt, build_summarization_prompt
 from .state import LogEntry, SummaryState
 from .working_memory_log import get_working_memory_log
@@ -39,13 +39,13 @@ async def _call_openrouter(prompt: SummaryPrompt, model: str, api_key: Optional[
             )
             choices = response.get("choices") or []
             if not choices:
-                raise OpenRouterError("API response missing choices")
+                raise OpenAIError("API response missing choices")
             message = choices[0].get("message") or {}
             content = (message.get("content") or "").strip()
             if content:
                 return content
-            raise OpenRouterError("API response missing content")
-        except OpenRouterError as exc:
+            raise OpenAIError("API response missing content")
+        except OpenAIError as exc:
             last_error = exc
             if attempt == 0:
                 logger.warning(
@@ -67,7 +67,7 @@ async def _call_openrouter(prompt: SummaryPrompt, model: str, api_key: Optional[
             break
     if last_error:
         raise last_error
-    raise OpenRouterError("Conversation summarization failed")
+    raise OpenAIError("Conversation summarization failed")
 
 
 async def summarize_conversation() -> bool:

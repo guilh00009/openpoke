@@ -355,14 +355,21 @@ class InteractionAgentRuntime:
             self._log_tool_invocation(tool_call, stage="start")
             result = handle_tool_call(tool_call.name, tool_call.arguments)
         except Exception as exc:  # pragma: no cover - defensive
+            error_type = type(exc).__name__
             logger.error(
-                "Tool execution crashed",
-                extra={"tool": tool_call.name, "error": str(exc)},
+                f"Tool execution crashed: {error_type}",
+                extra={
+                    "tool": tool_call.name,
+                    "error_type": error_type,
+                    "error_message": str(exc),
+                    "arguments": tool_call.arguments,
+                },
+                exc_info=True
             )
             self._log_tool_invocation(
                 tool_call,
                 stage="error",
-                detail={"error": str(exc)},
+                detail={"error": str(exc), "error_type": error_type},
             )
             return ToolResult(success=False, payload={"error": str(exc)})
 

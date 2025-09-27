@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from .processing import ProcessedEmail
 from ...config import get_settings
 from ...logging_config import logger
-from ...openrouter_client import OpenRouterError, request_chat_completion
+from ...openrouter_client import OpenAIError, request_chat_completion
 
 
 _TOOL_NAME = "mark_email_importance"
@@ -122,7 +122,7 @@ async def classify_email_importance(email: ProcessedEmail) -> Optional[str]:
             }
         )
         
-    except OpenRouterError as exc:
+    except OpenAIError as exc:
         logger.error(
             "Importance classification API error",
             extra={
@@ -130,7 +130,7 @@ async def classify_email_importance(email: ProcessedEmail) -> Optional[str]:
                 "model": model,
                 "sender": email.sender,
                 "subject": email.subject,
-                "error_type": "OpenRouterError",
+                "error_type": "OpenAIError",
                 "error_message": str(exc),
                 "api_key_present": bool(api_key),
                 "request_payload_size": len(user_payload),
